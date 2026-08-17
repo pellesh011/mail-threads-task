@@ -2,84 +2,267 @@ datasource db {
   provider = "postgresql"
 }
 
+
 generator client {
   provider = "prisma-client-js"
-  output = "../../../generated/prisma"
+  output   = "../../../generated/prisma"
 }
 
-//
-// Models follow the Clean Architecture design:
-// - external_id NOT NULL + UNIQUE(provider_id, external_id) in reference tables
-// - MessageReference only created when external identity exists
-// - ThreadReference for future providers with ready conversation IDs
-// - Task tracking for resumability
-//
-model Provider {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  messages    Message[]
-  threads     Thread[]
-  refs        MessageReference[]
-  threadRefs  ThreadReference[]
-  tasks       Task[]
+
+enum TaskType {
+  FETCH_MESSAGES
+  REBUILD_THREADS
 }
+
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+
+model Provider {
+
+  id String @id @default(uuid())
+
+  name String @unique
+
+
+  messageRefs MessageReference[]
+
+  threadRefs ThreadReference[]
+
+  tasks Task[]
+}
+
+
 
 model Message {
-  id           String   @id @default(uuid())
-  providerId   String
-  provider     Provider @relation(fields: [providerId], references: [id])
-  sender       String
-  recipients   Json
-  subject      String
-  sentAt       DateTime @db.Timestamptz
-  inReplyTo    String?  // raw external in_reply_to, может отсутствовать
-  references   Json    // сырые ссылки (ordered list) — критически важно сохранять для пересчёта тредов после рестарта
-  threadId     String?  // FK к Thread
-  thread       Thread?  @relation(fields: [threadId], references: [id])
-  parentId     String?  // FK к Message (внутренний ID родителя)
-  parent       Message? @relation("MsgParent", fields: [parentId], references: [id])
-  children     Message[] @relation("MsgParent")
-  refs         MessageReference[]
+
+  id String @id @default(uuid())
+
+
+  sender String
+
+  recipients Json
+
+
+  subject String
+
+
+  sentAt DateTime @db.Timestamptz
+
+
+  //
+  // Внутренняя связь сообщений
+  //
+  parentId String?
+
+  parent Message?
+    @relation(
+      "MessageParent",
+      fields: [parentId],
+      references: [id]
+    )
+
+
+  children Message[]
+    @relation("MessageParent")
+
+
+  //
+  // Текущий найденный thread
+  //
+  threadId String?
+
+  thread Thread?
+    @relation(
+      fields: [threadId],
+      references: [id]
+    )
+
+
+  //
+  // Внешние идентификаторы
+  //
+  refs MessageReference[]
+
+
+  //
+  // Сырые данные провайдера
+  //
+  metadata Json?
+
+
+  createdAt DateTime @default(now())
 }
+
+
 
 model MessageReference {
-  id         String   @id @default(uuid())
-  messageId  String
-  message    Message  @relation(fields: [messageId], references: [id])
+
+  id String @id @default(uuid())
+
+
+  messageId String
+
+  message Message
+    @relation(
+      fields: [messageId],
+      references: [id],
+      onDelete: Cascade
+    )
+
+
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id])
+
+  provider Provider
+    @relation(
+      fields: [providerId],
+      references: [id]
+    )
+
+
   externalId String
-  @@unique([providerId, externalId])  // external_id NOT NULL; строка = факт внешней идентичности
+
+
+  @@unique([
+    providerId,
+    externalId
+  ])
 }
+
+
 
 model Thread {
-  id          String   @id @default(uuid())
-  providerId  String
-  provider    Provider @relation(fields: [providerId], references: [id])
-  subject     String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  messages    Message[]
-  refs        ThreadReference[]
+
+  id String @id @default(uuid())
+
+
+  subject String?
+
+
+  messages Message[]
+
+
+  refs ThreadReference[]
+
+
+  createdAt DateTime @default(now())
 }
+
+
 
 model ThreadReference {
-  id         String   @id @default(uuid())
-  threadId   String
-  thread     Thread   @relation(fields: [threadId], references: [id])
+
+  id String @id @default(uuid())
+
+
+  threadId String
+
+  thread Thread
+    @relation(
+      fields: [threadId],
+      references: [id],
+      onDelete: Cascade
+    )
+
+
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id])
+
+  provider Provider
+    @relation(
+      fields: [providerId],
+      references: [id]
+    )
+
+
   externalId String
-  @@unique([providerId, externalId])  // для будущего P2; сейчас не заполняется
+
+
+  @@unique([
+    providerId,
+    externalId
+  ])
 }
 
+
+
 model Task {
-  id         String   @id @default(uuid())
+
+  id String @id @default(uuid())
+
+
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id])
-  type       String   // 'fetch' | 'rebuild'
-  data       Json     // fetch: {cursor: string|null}
-  status     String   // 'pending' | 'running' | 'done'
-  error      String?
-  createdAt  DateTime @default(now()) @db.Timestamptz
-  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  provider Provider
+    @relation(
+      fields: [providerId],
+      references: [id]
+    )
+
+
+  type TaskType
+
+
+  data Json
+
+
+  status TaskStatus
+
+
+  error String?
+
+
+  createdAt DateTime @default(now())
+
+
+  updatedAt DateTime @updatedAt
+}
+
+
+model RawMessage {
+
+  id String @id @default(uuid())
+
+
+  providerId String
+
+  provider Provider
+    @relation(
+      fields: [providerId],
+      references: [id]
+    )
+
+
+  externalId String?
+
+
+  payload Json
+
+
+  receivedAt DateTime
+    @default(now())
+    @db.Timestamptz
+
+
+  processedAt DateTime?
+    @db.Timestamptz
+
+
+  messageId String? @unique
+
+  message Message?
+    @relation(
+      fields: [messageId],
+      references: [id]
+    )
+
+
+  @@unique([
+    providerId,
+    externalId
+  ])
 }

@@ -1,15 +1,21 @@
+import { UUID } from 'node:crypto';
 import { Task } from '../entities/Task.js';
 import { TaskStatus } from '../enums/TaskStatus.js';
+import { TaskType } from '../enums/TaskType.js';
 
 export interface TaskRepository {
-  findByProviderAndType(providerId: string, type: string): Promise<Task | null>;
+  findByProviderAndType(
+    providerId: string,
+    type: TaskType,
+  ): Promise<Task | null>;
 
-  create(params: {
+  save(params: {
+    id: UUID;
     providerId: string;
-    type: string;
+    type: TaskType;
     status: TaskStatus;
     data?: Record<string, unknown>;
   }): Promise<Task>;
 
-  updateStatus(taskId: string, status: string, error?: string): Promise<void>;
+  updateStatus(id: string, UUID: TaskStatus, error?: string): Promise<void>;
 }
