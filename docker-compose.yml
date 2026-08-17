@@ -21,15 +21,20 @@ services:
       retries: 10
       start_period: 15s
 
-  worker:
-    build: ./worker
+  # Пример подключения своей службы:
+  #
+  # worker:
+  #   build: .
+  #   depends_on:
+  #     provider:
+  #       condition: service_healthy
+  #   environment:
+  #     PROVIDER_URL: http://provider:8080
+
+  exporter:
+    build: .
     depends_on:
       provider:
         condition: service_healthy
     environment:
       PROVIDER_URL: http://provider:8080
-
-  exporter:
-    build: ./exporter
-    volumes:
-      - ./out:/app/out
