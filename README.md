@@ -134,7 +134,13 @@ GET http://localhost:8080/v1/messages?cursor=<строка>&limit=<число>
 Формат файла — одна JSON-строка на письмо:
 
 ```json
-{"external_id":"<a91f3c2e8b04d7f6@mail.example.net>","thread_key":"t-4417","parent_id":"<0c47b1de99a3f218@example.com>","sent_at":"2025-04-11T09:23:15.000Z","subject":"Re: Доступ к тестовому стенду"}
+{
+  "external_id": "<a91f3c2e8b04d7f6@mail.example.net>",
+  "thread_key": "t-4417",
+  "parent_id": "<0c47b1de99a3f218@example.com>",
+  "sent_at": "2025-04-11T09:23:15.000Z",
+  "subject": "Re: Доступ к тестовому стенду"
+}
 ```
 
 Поля:
@@ -209,4 +215,5 @@ node selfcheck.js out/result.jsonl
 В репозитории должны быть: ваш код, `docker-compose.yml`, README и файл `out/result.jsonl` с вашим результатом.
 
 Если что-то в задании непонятно, спрашивайте. Вопросы на оценку не влияют.# -mail-threads-task
+
 # mail-threads-task

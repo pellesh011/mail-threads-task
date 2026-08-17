@@ -1,0 +1,32 @@
+{
+  "name": "mail-threads-task",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint worker/src exporter/src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --prefix worker && npm run typecheck --prefix exporter",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0"
+  },
+  "lint-staged": {
+    "*.{ts,json,yml,yaml,md}": [
+      "prettier --write"
+    ],
+    "worker/**/*.ts": [
+      "eslint --fix"
+    ],
+    "exporter/**/*.ts": [
+      "eslint --fix"
+    ]
+  }
+}
