@@ -9,7 +9,7 @@ services:
     environment:
       CANDIDATE: ${CANDIDATE:?укажите CANDIDATE в файле .env}
     ports:
-      - "8080:8080"
+      - '8080:8080'
     healthcheck:
       test:
         - CMD
@@ -21,12 +21,15 @@ services:
       retries: 10
       start_period: 15s
 
-  # Пример подключения своей службы:
-  #
-  # worker:
-  #   build: .
-  #   depends_on:
-  #     provider:
-  #       condition: service_healthy
-  #   environment:
-  #     PROVIDER_URL: http://provider:8080
+  worker:
+    build: ./worker
+    depends_on:
+      provider:
+        condition: service_healthy
+    environment:
+      PROVIDER_URL: http://provider:8080
+
+  exporter:
+    build: ./exporter
+    volumes:
+      - ./out:/app/out
