@@ -1,0 +1,85 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output = "../../../generated/prisma"
+}
+
+//
+// Models follow the Clean Architecture design:
+// - external_id NOT NULL + UNIQUE(provider_id, external_id) in reference tables
+// - MessageReference only created when external identity exists
+// - ThreadReference for future providers with ready conversation IDs
+// - Task tracking for resumability
+//
+model Provider {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  messages    Message[]
+  threads     Thread[]
+  refs        MessageReference[]
+  threadRefs  ThreadReference[]
+  tasks       Task[]
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  sender       String
+  recipients   Json
+  subject      String
+  sentAt       DateTime @db.Timestamptz
+  inReplyTo    String?  // raw external in_reply_to, может отсутствовать
+  references   Json    // сырые ссылки (ordered list) — критически важно сохранять для пересчёта тредов после рестарта
+  threadId     String?  // FK к Thread
+  thread       Thread?  @relation(fields: [threadId], references: [id])
+  parentId     String?  // FK к Message (внутренний ID родителя)
+  parent       Message? @relation("MsgParent", fields: [parentId], references: [id])
+  children     Message[] @relation("MsgParent")
+  refs         MessageReference[]
+}
+
+model MessageReference {
+  id         String   @id @default(uuid())
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  externalId String
+  @@unique([providerId, externalId])  // external_id NOT NULL; строка = факт внешней идентичности
+}
+
+model Thread {
+  id          String   @id @default(uuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id])
+  subject     String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  messages    Message[]
+  refs        ThreadReference[]
+}
+
+model ThreadReference {
+  id         String   @id @default(uuid())
+  threadId   String
+  thread     Thread   @relation(fields: [threadId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  externalId String
+  @@unique([providerId, externalId])  // для будущего P2; сейчас не заполняется
+}
+
+model Task {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  type       String   // 'fetch' | 'rebuild'
+  data       Json     // fetch: {cursor: string|null}
+  status     String   // 'pending' | 'running' | 'done'
+  error      String?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+}

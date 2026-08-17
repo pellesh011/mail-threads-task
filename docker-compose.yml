@@ -21,20 +21,44 @@ services:
       retries: 10
       start_period: 15s
 
-  # Пример подключения своей службы:
-  #
-  # worker:
-  #   build: .
-  #   depends_on:
-  #     provider:
-  #       condition: service_healthy
-  #   environment:
-  #     PROVIDER_URL: http://provider:8080
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-worker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-worker}
+      POSTGRES_DB: ${POSTGRES_DB:-mailthreads}
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-worker} -d ${POSTGRES_DB:-mailthreads}
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
-  exporter:
-    build: .
+  worker:
+    build: ./worker
     depends_on:
       provider:
         condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       PROVIDER_URL: http://provider:8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-worker}:${POSTGRES_PASSWORD:-worker}@db:5432/${POSTGRES_DB:-mailthreads}
+
+  exporter:
+    build: ./exporter
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-worker}:${POSTGRES_PASSWORD:-worker}@db:5432/${POSTGRES_DB:-mailthreads}
+    volumes:
+      - ./out:/app/out
+
+volumes:
+  db_data:

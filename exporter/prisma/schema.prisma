@@ -1,0 +1,77 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Provider {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  messages    Message[]
+  threads     Thread[]
+  refs        MessageReference[]
+  threadRefs  ThreadReference[]
+  tasks       Task[]
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  providerId   String
+  provider     Provider @relation(fields: [providerId], references: [id])
+  sender       String
+  recipients   Json
+  subject      String
+  sentAt       DateTime @db.Timestamptz
+  inReplyTo    String?
+  references   Json
+  threadId     String?
+  thread       Thread?  @relation(fields: [threadId], references: [id])
+  parentId     String?
+  parent       Message? @relation("MsgParent", fields: [parentId], references: [id])
+  children     Message[] @relation("MsgParent")
+  refs         MessageReference[]
+}
+
+model MessageReference {
+  id         String   @id @default(uuid())
+  messageId  String
+  message    Message  @relation(fields: [messageId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  externalId String
+  @@unique([providerId, externalId])
+}
+
+model Thread {
+  id          String   @id @default(uuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id])
+  subject     String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  messages    Message[]
+  refs        ThreadReference[]
+}
+
+model ThreadReference {
+  id         String   @id @default(uuid())
+  threadId   String
+  thread     Thread   @relation(fields: [threadId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  externalId String
+  @@unique([providerId, externalId])
+}
+
+model Task {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  type       String   // 'fetch' | 'rebuild'
+  data       Json     // fetch: {cursor: string|null}
+  status     String   // 'pending' | 'running' | 'done'
+  error      String?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+}

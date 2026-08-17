@@ -1,0 +1,4 @@
+export enum TaskType {
+  IMPORT_MESSAGES = 'IMPORT_MESSAGES',
+  BUILD_THREADS = 'BUILD_THREADS',
+}
