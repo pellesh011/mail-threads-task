@@ -3,18 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "worker",
+    "exporter",
+    "package/shared"
+  ],
   "scripts": {
-    "lint": "eslint worker/src exporter/src",
+    "lint": "eslint worker/src exporter/src package/shared/src",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "npm run typecheck --prefix worker && npm run typecheck --prefix exporter",
+    "typecheck": "npm run typecheck --workspace worker --workspace exporter --workspace @mail-threads/shared",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "migrate": "npm run prisma:migrate:deploy",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
+    "dotenv": "^17.4.2",
     "eslint": "^10.8.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
+    "tsx": "^4.19.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0"
   },
@@ -22,10 +34,7 @@
     "*.{ts,json,yml,yaml,md}": [
       "prettier --write"
     ],
-    "worker/**/*.ts": [
-      "eslint --fix"
-    ],
-    "exporter/**/*.ts": [
+    "**/*.ts": [
       "eslint --fix"
     ]
   },

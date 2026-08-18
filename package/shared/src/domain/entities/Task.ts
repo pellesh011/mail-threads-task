@@ -1,5 +1,3 @@
-// domain/entities/Task.ts
-
 import { randomUUID } from 'node:crypto';
 import { TaskStatus } from '../enums/TaskStatus.js';
 import { TaskType } from '../enums/TaskType.js';

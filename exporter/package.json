@@ -2,23 +2,17 @@
   "name": "exporter",
   "version": "0.1.0",
   "private": true,
-  "type": "commonjs",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "start": "npx tsx src/index.ts",
-    "dev": "tsx watch src/index.ts"
-  },
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
-  "devDependencies": {
-    "@types/node": "^22.10.0",
-    "tsx": "^4.19.0",
-    "typescript": "^7.0.2"
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^7.9.1",
-    "prisma": "^7.9.1"
+    "@mail-threads/shared": "1.0.0",
+    "@prisma/client": "^7.9.1"
   }
 }

@@ -1,17 +1,20 @@
-FROM node:22-slim AS build
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-COPY prisma ./prisma
-RUN npx prisma generate 2>/dev/null || true
-COPY tsconfig.json ./
-COPY src ./src
-
-FROM node:22-slim AS runtime
+FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV DATABASE_URL=postgres://worker:worker@db:5432/mailthreads
+
 COPY package.json package-lock.json ./
-RUN npm ci --include-dev
-COPY --from=build /app/src ./src
-RUN rm -rf dist
-CMD ["npx", "tsx", "src/index.ts"]
+COPY package/shared/package.json package/shared/package.json
+COPY worker/package.json worker/package.json
+COPY exporter/package.json exporter/package.json
+
+RUN npm ci --include=dev
+
+COPY tsconfig.json ./
+COPY prisma.config.ts ./
+COPY package/shared package/shared
+COPY exporter exporter
+
+RUN npx prisma generate
+
+CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx exporter/src/index.ts"]

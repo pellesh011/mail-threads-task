@@ -2,18 +2,14 @@ datasource db {
   provider = "postgresql"
 }
 
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../../../generated/prisma"
 }
-
 
 enum TaskType {
   FETCH_MESSAGES
   REBUILD_THREADS
 }
-
 
 enum TaskStatus {
   PENDING
@@ -22,247 +18,135 @@ enum TaskStatus {
   FAILED
 }
 
-
 model Provider {
-
   id String @id @default(uuid())
 
   name String @unique
 
-
   messageRefs MessageReference[]
-
   threadRefs ThreadReference[]
-
   tasks Task[]
+  rawMessages RawMessage[]
 }
 
-
-
 model Message {
-
   id String @id @default(uuid())
 
-
   sender String
-
   recipients Json
-
-
   subject String
-
-
   sentAt DateTime @db.Timestamptz
-
 
   //
   // Внутренняя связь сообщений
   //
   parentId String?
 
-  parent Message?
-    @relation(
-      "MessageParent",
-      fields: [parentId],
-      references: [id]
-    )
-
-
-  children Message[]
-    @relation("MessageParent")
-
+  parent Message? @relation("MessageParent", fields: [parentId], references: [id])
+  children Message[] @relation("MessageParent")
 
   //
   // Текущий найденный thread
   //
   threadId String?
 
-  thread Thread?
-    @relation(
-      fields: [threadId],
-      references: [id]
-    )
-
+  thread Thread? @relation(fields: [threadId], references: [id])
 
   //
   // Внешние идентификаторы
   //
   refs MessageReference[]
 
-
   //
   // Сырые данные провайдера
   //
   metadata Json?
 
+  //
+  // Raw message, из которого был создан Message
+  //
+  rawMessage RawMessage?
 
   createdAt DateTime @default(now())
 }
 
-
-
 model MessageReference {
-
   id String @id @default(uuid())
-
 
   messageId String
 
-  message Message
-    @relation(
-      fields: [messageId],
-      references: [id],
-      onDelete: Cascade
-    )
-
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   providerId String
 
-  provider Provider
-    @relation(
-      fields: [providerId],
-      references: [id]
-    )
-
+  provider Provider @relation(fields: [providerId], references: [id])
 
   externalId String
 
-
-  @@unique([
-    providerId,
-    externalId
-  ])
+  @@unique([providerId, externalId])
 }
 
-
-
 model Thread {
-
   id String @id @default(uuid())
-
 
   subject String?
 
-
   messages Message[]
-
-
   refs ThreadReference[]
-
 
   createdAt DateTime @default(now())
 }
 
-
-
 model ThreadReference {
-
   id String @id @default(uuid())
-
 
   threadId String
 
-  thread Thread
-    @relation(
-      fields: [threadId],
-      references: [id],
-      onDelete: Cascade
-    )
-
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   providerId String
 
-  provider Provider
-    @relation(
-      fields: [providerId],
-      references: [id]
-    )
-
+  provider Provider @relation(fields: [providerId], references: [id])
 
   externalId String
 
-
-  @@unique([
-    providerId,
-    externalId
-  ])
+  @@unique([providerId, externalId])
 }
 
-
-
 model Task {
-
   id String @id @default(uuid())
-
 
   providerId String
 
-  provider Provider
-    @relation(
-      fields: [providerId],
-      references: [id]
-    )
-
+  provider Provider @relation(fields: [providerId], references: [id])
 
   type TaskType
-
-
   data Json
-
-
   status TaskStatus
-
-
   error String?
 
-
   createdAt DateTime @default(now())
-
-
   updatedAt DateTime @updatedAt
 }
 
-
 model RawMessage {
-
   id String @id @default(uuid())
-
 
   providerId String
 
-  provider Provider
-    @relation(
-      fields: [providerId],
-      references: [id]
-    )
-
+  provider Provider @relation(fields: [providerId], references: [id])
 
   externalId String?
 
-
   payload Json
 
+  receivedAt DateTime @default(now()) @db.Timestamptz
 
-  receivedAt DateTime
-    @default(now())
-    @db.Timestamptz
-
-
-  processedAt DateTime?
-    @db.Timestamptz
-
+  processedAt DateTime? @db.Timestamptz
 
   messageId String? @unique
 
-  message Message?
-    @relation(
-      fields: [messageId],
-      references: [id]
-    )
+  message Message? @relation(fields: [messageId], references: [id])
 
-
-  @@unique([
-    providerId,
-    externalId
-  ])
+  @@unique([providerId, externalId])
 }

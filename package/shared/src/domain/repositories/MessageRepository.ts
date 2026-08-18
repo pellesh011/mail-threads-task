@@ -1,4 +1,4 @@
-import { UUID } from 'crypto';
+import type { UUID } from 'node:crypto';
 import type { Message } from '../entities/Message.js';
 
 export interface MessageRepository {

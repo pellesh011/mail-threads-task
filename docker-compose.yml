@@ -40,7 +40,9 @@ services:
       retries: 10
 
   worker:
-    build: ./worker
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
     depends_on:
       provider:
         condition: service_healthy
@@ -51,7 +53,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-worker}:${POSTGRES_PASSWORD:-worker}@db:5432/${POSTGRES_DB:-mailthreads}
 
   exporter:
-    build: ./exporter
+    build:
+      context: .
+      dockerfile: exporter/Dockerfile
     depends_on:
       db:
         condition: service_healthy

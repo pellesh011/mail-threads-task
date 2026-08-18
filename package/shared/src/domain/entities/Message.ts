@@ -24,7 +24,7 @@ export class Message {
   public readonly parentId: MessageId | null;
 
   constructor(params: CreateMessageParams) {
-    this.id = params.parentId ?? randomUUID();
+    this.id = randomUUID();
 
     this.threadId = params.threadId;
 

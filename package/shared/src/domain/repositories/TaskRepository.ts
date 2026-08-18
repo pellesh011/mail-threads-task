@@ -1,7 +1,7 @@
-import { UUID } from 'node:crypto';
-import { Task } from '../entities/Task.js';
-import { TaskStatus } from '../enums/TaskStatus.js';
-import { TaskType } from '../enums/TaskType.js';
+import type { UUID } from 'node:crypto';
+import type { Task } from '../entities/Task.js';
+import type { TaskStatus } from '../enums/TaskStatus.js';
+import type { TaskType } from '../enums/TaskType.js';
 
 export interface TaskRepository {
   findByProviderAndType(
@@ -17,5 +17,5 @@ export interface TaskRepository {
     data?: Record<string, unknown>;
   }): Promise<Task>;
 
-  updateStatus(id: string, UUID: TaskStatus, error?: string): Promise<void>;
+  updateStatus(id: string, status: TaskStatus, error?: string): Promise<void>;
 }

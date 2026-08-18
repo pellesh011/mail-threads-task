@@ -1,4 +1,6 @@
-const startedAt = Date.now();
-console.log('exporter: start');
+import { TaskType } from '@mail-threads/shared';
 
-console.log(`exporter: done in ${Date.now() - startedAt} ms`);
+const startedAt = Date.now();
+console.log(`worker: start (${TaskType.IMPORT_MESSAGES})`);
+
+console.log(`worker: done in ${Date.now() - startedAt} ms`);
