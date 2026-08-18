@@ -1,13 +1,17 @@
-import type { UUID } from 'node:crypto';
 import type { Message } from '../entities/Message.js';
 
 export interface MessageRepository {
   save(params: {
-    id?: UUID;
-    threadId: string;
-    sender?: string;
-    recipients?: string[];
+    threadId?: string | null;
+    sender: string;
+    subject?: string | null;
     sentAt: Date;
-    parentId?: string;
+    parentId?: string | null;
   }): Promise<Message>;
+
+  findById(id: string): Promise<Message | null>;
+
+  updateThreadId(id: string, threadId: string): Promise<void>;
+
+  updateParentId(id: string, parentId: string | null): Promise<void>;
 }

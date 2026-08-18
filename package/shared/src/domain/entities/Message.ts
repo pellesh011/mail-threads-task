@@ -3,34 +3,40 @@ import { randomUUID } from 'node:crypto';
 export type MessageId = string;
 
 export interface CreateMessageParams {
-  threadId: string;
+  id?: string;
+
+  threadId?: string | null;
+
   sender: string;
-  body: string;
+
+  subject?: string | null;
+
   sentAt: Date;
-  parentId?: MessageId;
+
+  parentId?: string | null;
 }
 
 export class Message {
   public readonly id: MessageId;
 
-  public readonly threadId: string;
+  public readonly threadId: string | null;
 
   public readonly sender: string;
 
-  public readonly body: string;
+  public readonly subject: string | null;
 
   public readonly sentAt: Date;
 
   public readonly parentId: MessageId | null;
 
   constructor(params: CreateMessageParams) {
-    this.id = randomUUID();
+    this.id = params.id ?? randomUUID();
 
-    this.threadId = params.threadId;
+    this.threadId = params.threadId ?? null;
 
     this.sender = params.sender;
 
-    this.body = params.body;
+    this.subject = params.subject ?? null;
 
     this.sentAt = params.sentAt;
 

@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 export type ThreadId = string;
 
 export interface CreateThreadParams {
+  id?: string;
+
   subject?: string;
 }
 
@@ -15,7 +17,7 @@ export class Thread {
   private readonly messages: Message[] = [];
 
   constructor(params: CreateThreadParams = {}) {
-    this.id = randomUUID();
+    this.id = params.id ?? randomUUID();
 
     this.subject = params.subject ?? null;
   }

@@ -17,7 +17,8 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "migrate": "npm run prisma:migrate:deploy",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "node -e \"const fs=require('fs');if(fs.existsSync('package/shared/src/infrastructure/database/prisma/schema.prisma')){require('child_process').execSync('npx prisma generate',{stdio:'inherit'})}\""
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

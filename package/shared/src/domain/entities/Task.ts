@@ -16,11 +16,14 @@ export class Task {
   private error?: string;
 
   constructor(params: {
+    id?: string;
     providerId: string;
     type: TaskType;
     data?: Record<string, unknown>;
+    status?: TaskStatus;
+    error?: string;
   }) {
-    this.id = randomUUID();
+    this.id = params.id ?? randomUUID();
 
     this.providerId = params.providerId;
 
@@ -28,7 +31,9 @@ export class Task {
 
     this.data = params.data ?? {};
 
-    this.status = TaskStatus.PENDING;
+    this.status = params.status ?? TaskStatus.PENDING;
+
+    this.error = params.error;
   }
 
   start(): void {

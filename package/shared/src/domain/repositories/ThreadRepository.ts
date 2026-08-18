@@ -5,5 +5,7 @@ export interface ThreadRepository {
 
   create(subject?: string): Promise<Thread>;
 
+  updateSubject(threadId: string, subject: string | null): Promise<void>;
+
   assignMessages(threadId: string, messageIds: string[]): Promise<void>;
 }

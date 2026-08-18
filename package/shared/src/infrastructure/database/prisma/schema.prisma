@@ -7,14 +7,14 @@ generator client {
 }
 
 enum TaskType {
-  FETCH_MESSAGES
-  REBUILD_THREADS
+  IMPORT_MESSAGES
+  BUILD_THREADS
 }
 
 enum TaskStatus {
   PENDING
   RUNNING
-  DONE
+  COMPLETED
   FAILED
 }
 
@@ -33,8 +33,9 @@ model Message {
   id String @id @default(uuid())
 
   sender String
-  recipients Json
-  subject String
+
+  subject String?
+
   sentAt DateTime @db.Timestamptz
 
   //
@@ -58,9 +59,10 @@ model Message {
   refs MessageReference[]
 
   //
-  // Сырые данные провайдера
+  // Ссылки на другие письма
   //
-  metadata Json?
+  outgoing MessageToMessageReference[] @relation("MessageOutgoing")
+  incoming MessageToMessageReference[] @relation("MessageIncoming")
 
   //
   // Raw message, из которого был создан Message
@@ -68,6 +70,20 @@ model Message {
   rawMessage RawMessage?
 
   createdAt DateTime @default(now())
+}
+
+model MessageToMessageReference {
+  id String @id @default(uuid())
+
+  messageId String
+
+  message Message @relation("MessageOutgoing", fields: [messageId], references: [id], onDelete: Cascade)
+
+  referencedMessageId String
+
+  referencedMessage Message @relation("MessageIncoming", fields: [referencedMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, referencedMessageId])
 }
 
 model MessageReference {
