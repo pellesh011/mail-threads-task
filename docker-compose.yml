@@ -50,6 +50,7 @@ services:
         condition: service_healthy
     environment:
       PROVIDER_URL: http://provider:8080
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
       DATABASE_URL: postgres://${POSTGRES_USER:-worker}:${POSTGRES_PASSWORD:-worker}@db:5432/${POSTGRES_DB:-mailthreads}
 
   exporter:

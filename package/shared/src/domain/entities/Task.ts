@@ -11,6 +11,8 @@ export class Task {
 
   public readonly data: Record<string, unknown>;
 
+  public readonly startAt: Date | null;
+
   private status: TaskStatus;
 
   private error?: string;
@@ -20,6 +22,7 @@ export class Task {
     providerId: string;
     type: TaskType;
     data?: Record<string, unknown>;
+    startAt?: Date | null;
     status?: TaskStatus;
     error?: string;
   }) {
@@ -30,6 +33,8 @@ export class Task {
     this.type = params.type;
 
     this.data = params.data ?? {};
+
+    this.startAt = params.startAt ?? null;
 
     this.status = params.status ?? TaskStatus.PENDING;
 

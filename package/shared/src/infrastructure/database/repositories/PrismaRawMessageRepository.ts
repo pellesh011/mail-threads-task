@@ -1,7 +1,10 @@
 import type { Prisma } from '@prisma/client';
 import type { RawMessage as RawMessageRow } from '@prisma/client';
 import { RawMessage } from '../../../domain/entities/RawMessage.js';
-import type { RawMessageRepository } from '../../../domain/repositories/RawMessageRepository.js';
+import type {
+  RawMessageInput,
+  RawMessageRepository,
+} from '../../../domain/repositories/RawMessageRepository.js';
 import type { DbClient } from '../prisma/client.js';
 
 export class PrismaRawMessageRepository implements RawMessageRepository {
@@ -31,6 +34,23 @@ export class PrismaRawMessageRepository implements RawMessageRepository {
     });
 
     return this.toDomain(row);
+  }
+
+  async upsertMany(rows: RawMessageInput[]): Promise<number> {
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    const result = await this.db.rawMessage.createMany({
+      data: rows.map(({ providerId, externalId, payload }) => ({
+        providerId,
+        externalId,
+        payload: payload as Prisma.InputJsonValue,
+      })),
+      skipDuplicates: true,
+    });
+
+    return result.count;
   }
 
   async findById(id: string): Promise<RawMessage | null> {

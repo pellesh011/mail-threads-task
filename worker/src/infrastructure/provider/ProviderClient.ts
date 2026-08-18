@@ -1,0 +1,145 @@
+import type { IncomingMessage } from '../../application/dto/IncomingMessage.js';
+
+export class RateLimitError extends Error {
+  constructor(public readonly retryAfterSeconds: number) {
+    super(`rate limited (retry after ${retryAfterSeconds}s)`);
+    this.name = 'RateLimitError';
+  }
+}
+
+export class TransientProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = 'TransientProviderError';
+  }
+}
+
+export class ProviderError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = 'ProviderError';
+  }
+}
+
+export interface ProviderPage {
+  items: IncomingMessage[];
+  nextCursor: string | null;
+}
+
+interface ProviderMessage {
+  message_id?: string;
+  in_reply_to?: string | null;
+  references?: string[];
+  subject?: string;
+  from?: string;
+  to?: string[];
+  sent_at?: string;
+}
+
+interface ProviderResponse {
+  items?: ProviderMessage[];
+  next_cursor?: string | null;
+}
+
+const MAX_TIMEOUT_MS = 30_000;
+
+export class ProviderClient {
+  constructor(private readonly baseUrl: string) {}
+
+  buildUrl(cursor: string | null, limit: number): string {
+    const url = new URL('/v1/messages', this.baseUrl);
+
+    url.searchParams.set('limit', String(limit));
+
+    if (cursor !== null) {
+      url.searchParams.set('cursor', cursor);
+    }
+
+    return url.toString();
+  }
+
+  async fetchPage(cursor: string | null, limit = 200): Promise<ProviderPage> {
+    return this.request(cursor, limit);
+  }
+
+  private async request(
+    cursor: string | null,
+    limit: number,
+  ): Promise<ProviderPage> {
+    const url = this.buildUrl(cursor, limit);
+
+    const controller = new AbortController();
+
+    const timer = setTimeout(() => controller.abort(), MAX_TIMEOUT_MS);
+
+    try {
+      let response: Response;
+
+      try {
+        response = await fetch(url, { signal: controller.signal });
+      } catch (error) {
+        throw new TransientProviderError('provider request failed', undefined, {
+          cause: error,
+        });
+      }
+
+      if (response.status === 429) {
+        const raw = response.headers.get('retry-after');
+        const seconds = raw === null ? 1 : Number(raw);
+
+        throw new RateLimitError(Number.isNaN(seconds) ? 1 : seconds);
+      }
+
+      if (!response.ok) {
+        if (response.status >= 500) {
+          throw new TransientProviderError(
+            `HTTP ${response.status}`,
+            response.status,
+          );
+        }
+
+        throw new ProviderError(`HTTP ${response.status}`, response.status);
+      }
+
+      let body: ProviderResponse;
+
+      try {
+        body = (await response.json()) as ProviderResponse;
+      } catch (error) {
+        throw new ProviderError('invalid provider response body', undefined, {
+          cause: error,
+        });
+      }
+
+      return {
+        items: (body.items ?? []).map((item) => this.mapItem(item)),
+        nextCursor: body.next_cursor ?? null,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private mapItem(item: ProviderMessage): IncomingMessage {
+    return {
+      externalId: item.message_id ?? '',
+      payload: {
+        message_id: item.message_id,
+        in_reply_to: item.in_reply_to,
+        references: item.references,
+        subject: item.subject,
+        from: item.from,
+        to: item.to,
+        sent_at: item.sent_at,
+      },
+    };
+  }
+}

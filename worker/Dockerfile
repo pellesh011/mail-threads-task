@@ -17,4 +17,4 @@ COPY worker worker
 
 RUN npx prisma generate
 
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx worker/src/main.ts"]
+CMD ["npx", "tsx", "worker/src/main.ts"]

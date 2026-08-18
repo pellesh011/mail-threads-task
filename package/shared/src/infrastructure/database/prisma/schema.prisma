@@ -138,11 +138,15 @@ model Task {
 
   type TaskType
   data Json
+  cursor String?
   status TaskStatus
+  startAt DateTime?
   error String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([providerId, cursor])
 }
 
 model RawMessage {
