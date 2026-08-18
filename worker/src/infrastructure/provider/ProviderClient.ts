@@ -1,4 +1,5 @@
 import type { IncomingMessage } from '../../application/dto/IncomingMessage.js';
+import type { RateLimiter } from '../rateLimit/RateLimiter.js';
 
 export class RateLimitError extends Error {
   constructor(public readonly retryAfterSeconds: number) {
@@ -52,7 +53,10 @@ interface ProviderResponse {
 const MAX_TIMEOUT_MS = 30_000;
 
 export class ProviderClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly limiter: RateLimiter,
+  ) {}
 
   buildUrl(cursor: string | null, limit: number): string {
     const url = new URL('/v1/messages', this.baseUrl);
@@ -74,6 +78,8 @@ export class ProviderClient {
     cursor: string | null,
     limit: number,
   ): Promise<ProviderPage> {
+    await this.limiter.acquire();
+
     const url = this.buildUrl(cursor, limit);
 
     const controller = new AbortController();
