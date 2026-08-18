@@ -17,6 +17,10 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "migrate": "npm run prisma:migrate:deploy",
+    "worker:dev": "npm run dev --workspace worker",
+    "worker:start": "npm run start --workspace worker",
+    "exporter:dev": "npm run dev --workspace exporter",
+    "exporter:start": "npm run start --workspace exporter",
     "prepare": "husky",
     "postinstall": "node -e \"const fs=require('fs');if(fs.existsSync('package/shared/src/infrastructure/database/prisma/schema.prisma')){require('child_process').execSync('npx prisma generate',{stdio:'inherit'})}\""
   },
