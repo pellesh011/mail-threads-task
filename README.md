@@ -1,4 +1,4 @@
-pellesh01@gmail.com
+vstarshinin@yandex.ru
 
 ## Как запустить
 
