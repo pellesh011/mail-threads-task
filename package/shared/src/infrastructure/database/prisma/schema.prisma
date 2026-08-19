@@ -83,6 +83,11 @@ model MessageToMessageReference {
 
   referencedMessage Message @relation("MessageIncoming", fields: [referencedMessageId], references: [id], onDelete: Cascade)
 
+  // 0-based position of the reference in the raw message's `references` list.
+  // (Only explicit `references` become MessageToMessageReference rows;
+  // `in_reply_to` is stored on the Message instead.)
+  order Int
+
   @@unique([messageId, referencedMessageId])
 }
 

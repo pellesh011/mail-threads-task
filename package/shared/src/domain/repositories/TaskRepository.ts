@@ -9,11 +9,12 @@ export interface ImportTaskView {
 
 export interface TaskRepository {
   /**
-   * Selects a single ready PENDING import task for the provider.
-   * The task stays PENDING until it is fully processed, so it can be claimed
-   * again after a crash. Reads are optimistic: a concurrent worker may claim the
-   * same task, but duplicate work is neutralised by the idempotent persistence
-   * and the unique (providerId, cursor) on the follow-up task.
+   * Atomically claims a single ready PENDING import task for the provider.
+   * Runs under FOR UPDATE SKIP LOCKED so each task is handed to exactly one
+   * worker, and stamps a short claim lease via startAt so a crashed worker's
+   * task is reclaimed after the lease expires. Duplicate work is further
+   * neutralised by the idempotent persistence and the unique (providerId,
+   * cursor) on the follow-up task.
    */
   claimImportTask(
     providerId: string,
@@ -57,6 +58,25 @@ export interface TaskRepository {
   ): Promise<void>;
 
   failImportTask(id: string, error: string): Promise<void>;
+
+  /**
+   * Creates the BUILD_THREADS task for this provider if it does not exist yet.
+   * Returns true when the task was created, false when it already exists.
+   */
+  ensureBuildThreadsTask(providerId: string): Promise<boolean>;
+
+  /**
+   * Atomically claims the single PENDING BUILD_THREADS task for the provider
+   * (FOR UPDATE SKIP LOCKED + short claim lease). Returns null when there is
+   * nothing ready to claim.
+   */
+  claimBuildThreadsTask(
+    providerId: string,
+    now: Date,
+  ): Promise<{ id: string } | null>;
+
+  /** Marks the BUILD_THREADS task as COMPLETED. */
+  completeBuildThreadsTask(id: string): Promise<void>;
 
   /**
    * Counts all PENDING import tasks (including deferred ones). Used to detect

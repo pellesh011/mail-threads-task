@@ -10,6 +10,9 @@ import type {
   TaskRepository,
 } from '../../../domain/repositories/TaskRepository.js';
 import type { DbClient } from '../prisma/client.js';
+import { withTransaction } from '../unitOfWork.js';
+
+const CLAIM_LEASE_MS = 10_000;
 
 interface ClaimRow {
   id: string;
@@ -24,29 +27,37 @@ export class PrismaTaskRepository implements TaskRepository {
     providerId: string,
     now: Date,
   ): Promise<ImportTaskView | null> {
-    const rows = await this.db.$queryRaw<ClaimRow[]>`
-      SELECT "id", "cursor",
-             COALESCE(NULLIF(data->>'retries', ''), '0')::int AS "retries"
-      FROM "Task"
-      WHERE "providerId" = ${providerId}
-        AND "type" = ${PrismaTaskType.IMPORT_MESSAGES}
-        AND "status" = ${PrismaTaskStatus.PENDING}
-        AND ("startAt" IS NULL OR "startAt" <= ${now})
-      ORDER BY "createdAt" ASC
-      LIMIT 1
-    `;
+    return withTransaction(async (tx) => {
+      const rows = await tx.$queryRaw<ClaimRow[]>`
+        SELECT "id", "cursor",
+               COALESCE(NULLIF(data->>'retries', ''), '0')::int AS "retries"
+        FROM "Task"
+        WHERE "providerId" = ${providerId}
+          AND "type" = ${PrismaTaskType.IMPORT_MESSAGES}
+          AND "status" = ${PrismaTaskStatus.PENDING}
+          AND ("startAt" IS NULL OR "startAt" <= ${now})
+        ORDER BY "createdAt" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      `;
 
-    const row = rows[0];
+      const row = rows[0];
 
-    if (row === undefined) {
-      return null;
-    }
+      if (row === undefined) {
+        return null;
+      }
 
-    return {
-      id: row.id,
-      cursor: row.cursor ?? null,
-      retries: row.retries,
-    };
+      await tx.task.update({
+        where: { id: row.id },
+        data: { startAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
+      });
+
+      return {
+        id: row.id,
+        cursor: row.cursor ?? null,
+        retries: row.retries,
+      };
+    });
   }
 
   async enqueueNextImportTask(
@@ -131,6 +142,69 @@ export class PrismaTaskRepository implements TaskRepository {
         type: PrismaTaskType.IMPORT_MESSAGES,
         status: PrismaTaskStatus.PENDING,
       },
+    });
+  }
+
+  async ensureBuildThreadsTask(providerId: string): Promise<boolean> {
+    const existing = await this.db.task.findFirst({
+      where: {
+        providerId,
+        type: PrismaTaskType.BUILD_THREADS,
+      },
+    });
+
+    if (existing !== null) {
+      return false;
+    }
+
+    await this.db.task.create({
+      data: {
+        providerId,
+        type: PrismaTaskType.BUILD_THREADS,
+        status: PrismaTaskStatus.PENDING,
+        data: {},
+      },
+    });
+
+    return true;
+  }
+
+  async claimBuildThreadsTask(
+    providerId: string,
+    now: Date,
+  ): Promise<{ id: string } | null> {
+    return withTransaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Task"
+        WHERE "providerId" = ${providerId}
+          AND "type" = ${PrismaTaskType.BUILD_THREADS}
+          AND "status" = ${PrismaTaskStatus.PENDING}
+          AND ("startAt" IS NULL OR "startAt" <= ${now})
+        ORDER BY "createdAt" ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED
+      `;
+
+      const row = rows[0];
+
+      if (row === undefined) {
+        return null;
+      }
+
+      await tx.task.update({
+        where: { id: row.id },
+        data: { startAt: new Date(now.getTime() + CLAIM_LEASE_MS) },
+      });
+
+      return { id: row.id };
+    });
+  }
+
+  async completeBuildThreadsTask(id: string): Promise<void> {
+    await this.db.task.update({
+      where: { id },
+      data: { status: PrismaTaskStatus.COMPLETED },
     });
   }
 

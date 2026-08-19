@@ -4,6 +4,7 @@ export interface MessageToMessageReferenceRepository {
   addLink(
     messageId: string,
     referencedMessageId: string,
+    order?: number,
   ): Promise<MessageToMessageReference>;
 
   findByMessageId(messageId: string): Promise<MessageToMessageReference[]>;

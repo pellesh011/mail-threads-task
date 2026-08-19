@@ -7,6 +7,8 @@ export interface MessageToMessageReferenceParams {
   messageId: MessageId;
 
   referencedMessageId: MessageId;
+
+  order?: number;
 }
 
 export class MessageToMessageReference {
@@ -16,11 +18,15 @@ export class MessageToMessageReference {
 
   public readonly referencedMessageId: MessageId;
 
+  public readonly order: number;
+
   constructor(params: MessageToMessageReferenceParams) {
     this.id = params.id ?? randomUUID();
 
     this.messageId = params.messageId;
 
     this.referencedMessageId = params.referencedMessageId;
+
+    this.order = params.order ?? 0;
   }
 }

@@ -9,7 +9,9 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "reset-recompute": "tsx src/resetRecompute.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@mail-threads/shared": "1.0.0",
