@@ -3,4 +3,3 @@ dist/
 **/generated/
 .env
 .devcontainer
-/out/*
