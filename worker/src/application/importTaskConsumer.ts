@@ -3,7 +3,6 @@ import {
   PrismaRawMessageRepository,
   withTransaction,
 } from '@mail-threads/shared';
-import type { Prisma } from '@prisma/client';
 import type {
   ProviderClient,
   ProviderPage,
@@ -38,7 +37,7 @@ export class ImportTaskConsumer {
       );
 
       if (task !== null) {
-        await this.processImportTask(task);
+        await this.processImportTask(task, performance.now());
         continue;
       }
 
@@ -95,12 +94,9 @@ export class ImportTaskConsumer {
       // zero count means no task is being fetched, deferred or queued: the feed
       // has genuinely settled.
       if (pending === 0) {
-        const created = await this.ensureBuildThreadsTask(tx);
         this.done.value = true;
 
-        if (created) {
-          console.log('import: feed exhausted, build-threads task enqueued');
-        }
+        console.log('import: feed exhausted');
 
         return 'done';
       }
@@ -109,11 +105,14 @@ export class ImportTaskConsumer {
     });
   }
 
-  private async processImportTask(task: {
-    id: string;
-    cursor: string | null;
-    retries: number;
-  }): Promise<void> {
+  private async processImportTask(
+    task: {
+      id: string;
+      cursor: string | null;
+      retries: number;
+    },
+    startedAtMs: number,
+  ): Promise<void> {
     let page: ProviderPage | undefined;
 
     try {
@@ -174,7 +173,13 @@ export class ImportTaskConsumer {
         );
 
         if (inserted > 0) {
-          console.log(`import: +${inserted} raw messages`);
+          console.log(
+            `import: task ${task.id} received at ` +
+              `${new Date(startedAtMs).toISOString()}, messages persisted at ` +
+              `${new Date().toISOString()} ` +
+              `(elapsed ${(performance.now() - startedAtMs).toFixed(3)} ms, ` +
+              `+${inserted} raw messages)`,
+          );
         }
       }
 
@@ -198,32 +203,6 @@ export class ImportTaskConsumer {
         console.log(`import: next task queued at cursor ${cursor}`);
       }
     });
-  }
-
-  private async ensureBuildThreadsTask(
-    tx: Prisma.TransactionClient,
-  ): Promise<boolean> {
-    const existing = await tx.task.findFirst({
-      where: {
-        providerId: this.providerId,
-        type: 'BUILD_THREADS',
-      },
-    });
-
-    if (existing !== null) {
-      return false;
-    }
-
-    await tx.task.create({
-      data: {
-        providerId: this.providerId,
-        type: 'BUILD_THREADS',
-        status: 'PENDING',
-        data: {},
-      },
-    });
-
-    return true;
   }
 
   private async defer(

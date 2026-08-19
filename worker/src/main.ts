@@ -5,6 +5,7 @@ import {
 } from '@mail-threads/shared';
 import { createClient } from 'redis';
 import { ImportTaskConsumer } from './application/importTaskConsumer.js';
+import { BuildThreadsConsumer } from './application/buildThreadsConsumer.js';
 import { bootstrapDatabase } from './infrastructure/bootstrap.js';
 import { ProviderClient } from './infrastructure/provider/ProviderClient.js';
 import {
@@ -25,11 +26,11 @@ const PROVIDER_URL = process.env.PROVIDER_URL ?? 'http://provider:8080';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
 const WORKER_CONCURRENCY = parseConcurrency(
-  process.env.WORKER_CONCURRENCY ?? '1',
+  process.env.WORKER_CONCURRENCY ?? '2',
 );
 
 const RATE_LIMIT_PER_SECOND = parseLimit(
-  process.env.RATE_LIMIT_PER_SECOND ?? '9',
+  process.env.RATE_LIMIT_PER_SECOND ?? '10',
 );
 
 const providerRepository = new PrismaProviderRepository(prisma);
@@ -58,6 +59,12 @@ const consumers = Array.from(
 );
 
 await Promise.all(consumers.map((consumer) => consumer.run()));
+
+await taskRepository.ensureBuildThreadsTask(provider.id);
+
+console.log('import: build-threads task enqueued');
+
+await new BuildThreadsConsumer(provider.id, taskRepository).run();
 
 await prisma.$disconnect();
 

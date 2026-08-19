@@ -50,7 +50,9 @@ interface ProviderResponse {
   next_cursor?: string | null;
 }
 
-const MAX_TIMEOUT_MS = 30_000;
+const MAX_TIMEOUT_MS = 100;
+
+const MAX_INVALID_BODY_RETRIES = 5;
 
 export class ProviderClient {
   constructor(
@@ -87,51 +89,73 @@ export class ProviderClient {
     const timer = setTimeout(() => controller.abort(), MAX_TIMEOUT_MS);
 
     try {
-      let response: Response;
+      let response = await this.doFetch(url, controller.signal);
 
-      try {
-        response = await fetch(url, { signal: controller.signal });
-      } catch (error) {
-        throw new TransientProviderError('provider request failed', undefined, {
-          cause: error,
-        });
-      }
+      let invalidBodyRetries = 0;
 
-      if (response.status === 429) {
-        const raw = response.headers.get('retry-after');
-        const seconds = raw === null ? 1 : Number(raw);
+      for (;;) {
+        let body: ProviderResponse;
 
-        throw new RateLimitError(Number.isNaN(seconds) ? 1 : seconds);
-      }
+        try {
+          body = (await response.json()) as ProviderResponse;
+        } catch (error) {
+          invalidBodyRetries++;
 
-      if (!response.ok) {
-        if (response.status >= 500) {
-          throw new TransientProviderError(
-            `HTTP ${response.status}`,
-            response.status,
-          );
+          if (invalidBodyRetries > MAX_INVALID_BODY_RETRIES) {
+            throw new ProviderError(
+              'invalid provider response body',
+              undefined,
+              {
+                cause: error,
+              },
+            );
+          }
+
+          response = await this.doFetch(url, controller.signal);
+
+          continue;
         }
 
-        throw new ProviderError(`HTTP ${response.status}`, response.status);
+        return {
+          items: (body.items ?? []).map((item) => this.mapItem(item)),
+          nextCursor: body.next_cursor ?? null,
+        };
       }
-
-      let body: ProviderResponse;
-
-      try {
-        body = (await response.json()) as ProviderResponse;
-      } catch (error) {
-        throw new ProviderError('invalid provider response body', undefined, {
-          cause: error,
-        });
-      }
-
-      return {
-        items: (body.items ?? []).map((item) => this.mapItem(item)),
-        nextCursor: body.next_cursor ?? null,
-      };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private async doFetch(url: string, signal: AbortSignal): Promise<Response> {
+    let response: Response;
+
+    try {
+      response = await fetch(url, { signal });
+    } catch (error) {
+      throw new TransientProviderError('provider request failed', undefined, {
+        cause: error,
+      });
+    }
+
+    if (response.status === 429) {
+      const raw = response.headers.get('retry-after');
+      const seconds = raw === null ? 1 : Number(raw);
+
+      throw new RateLimitError(Number.isNaN(seconds) ? 1 : seconds);
+    }
+
+    if (!response.ok) {
+      if (response.status >= 500) {
+        throw new TransientProviderError(
+          `HTTP ${response.status}`,
+          response.status,
+        );
+      }
+
+      throw new ProviderError(`HTTP ${response.status}`, response.status);
+    }
+
+    return response;
   }
 
   private mapItem(item: ProviderMessage): IncomingMessage {

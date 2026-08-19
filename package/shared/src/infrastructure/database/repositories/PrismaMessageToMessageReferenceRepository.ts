@@ -9,12 +9,13 @@ export class PrismaMessageToMessageReferenceRepository implements MessageToMessa
   async addLink(
     messageId: string,
     referencedMessageId: string,
+    order?: number,
   ): Promise<MessageToMessageReference> {
     const row = await this.db.messageToMessageReference.upsert({
       where: {
         messageId_referencedMessageId: { messageId, referencedMessageId },
       },
-      create: { messageId, referencedMessageId },
+      create: { messageId, referencedMessageId, order: order ?? 0 },
       update: {},
     });
 
@@ -42,6 +43,7 @@ export class PrismaMessageToMessageReferenceRepository implements MessageToMessa
       id: row.id,
       messageId: row.messageId,
       referencedMessageId: row.referencedMessageId,
+      order: row.order,
     });
   }
 }
